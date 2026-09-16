@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, Optional
 
 
 def _hours(row: Mapping[str, str]) -> float:
@@ -15,7 +15,13 @@ def _hours(row: Mapping[str, str]) -> float:
     return hours
 
 
-def markdown_report(rows: Iterable[Mapping[str, str]]) -> str:
+def markdown_report(
+    rows: Iterable[Mapping[str, str]],
+    min_hours: float = 0.0,
+    sort_by: Optional[str] = None,
+) -> str:
+    if min_hours < 0:
+        raise ValueError("min_hours cannot be negative")
     games = []
     platforms = Counter()
     total_hours = 0.0
@@ -24,9 +30,17 @@ def markdown_report(rows: Iterable[Mapping[str, str]]) -> str:
         if not title:
             raise ValueError("each row must have a title")
         platform = (row.get("platform") or "Unknown").strip() or "Unknown"
-        games.append((title, platform, _hours(row)))
+        hours = _hours(row)
+        if hours < min_hours:
+            continue
+        games.append((title, platform, hours))
         platforms[platform] += 1
-        total_hours += games[-1][2]
+        total_hours += hours
+
+    if sort_by == "title":
+        games.sort(key=lambda game: game[0].casefold())
+    elif sort_by == "hours":
+        games.sort(key=lambda game: (-game[2], game[0].casefold()))
 
     lines = [
         "# Game Library Report",
